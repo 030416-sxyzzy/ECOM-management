@@ -1,0 +1,47 @@
+# 依赖文件
+node_modules/
+target/
+*.jar
+*.war
+
+# 日志文件
+*.log
+logs/
+
+# 数据库文件
+*.db
+*.sqlite
+
+# IDE文件
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 环境配置文件
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 构建输出
+dist/
+build/
+
+# 临时文件
+*.tmp
+*.temp
+
+# 前端相关
+frontend/dist/
+frontend/node_modules/
+
+# 后端相关
+backend/target/
+backend/logs/
