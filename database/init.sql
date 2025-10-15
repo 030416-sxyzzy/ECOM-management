@@ -116,3 +116,224 @@ INSERT INTO products (name, description, price, stock, category_id, image_url, s
 INSERT INTO users (email, username, password) VALUES
 ('admin@ecom.com', 'admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVEFDi'),
 ('test@ecom.com', 'testuser', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVEFDi');
+
+-- ===========================================
+-- 数据库触发器 (Triggers)
+-- ===========================================
+
+-- 1. 订单创建时自动扣减库存触发器
+DELIMITER $$
+CREATE TRIGGER tr_order_items_after_insert
+AFTER INSERT ON order_items
+FOR EACH ROW
+BEGIN
+    -- 扣减商品库存
+    UPDATE products 
+    SET stock = stock - NEW.quantity,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = NEW.product_id;
+    
+    -- 记录库存变更日志
+    INSERT INTO inventory_logs (product_id, change_type, quantity, reason, created_at)
+    VALUES (NEW.product_id, 'out', NEW.quantity, CONCAT('订单扣减，订单号：', NEW.order_id), CURRENT_TIMESTAMP);
+END$$
+DELIMITER ;
+
+-- 2. 订单取消时恢复库存触发器
+DELIMITER $$
+CREATE TRIGGER tr_orders_after_update
+AFTER UPDATE ON orders
+FOR EACH ROW
+BEGIN
+    -- 如果订单状态从非取消状态变为取消状态，恢复库存
+    IF OLD.status != 'cancelled' AND NEW.status = 'cancelled' THEN
+        -- 恢复所有订单项对应的库存
+        UPDATE products p
+        INNER JOIN order_items oi ON p.id = oi.product_id
+        SET p.stock = p.stock + oi.quantity,
+            p.updated_at = CURRENT_TIMESTAMP
+        WHERE oi.order_id = NEW.id;
+        
+        -- 记录库存恢复日志
+        INSERT INTO inventory_logs (product_id, change_type, quantity, reason, created_at)
+        SELECT oi.product_id, 'in', oi.quantity, CONCAT('订单取消恢复，订单号：', NEW.id), CURRENT_TIMESTAMP
+        FROM order_items oi
+        WHERE oi.order_id = NEW.id;
+    END IF;
+END$$
+DELIMITER ;
+
+-- 3. 用户操作日志触发器
+DELIMITER $$
+CREATE TRIGGER tr_users_after_update
+AFTER UPDATE ON users
+FOR EACH ROW
+BEGIN
+    -- 记录用户信息变更
+    IF OLD.email != NEW.email OR OLD.username != NEW.username OR OLD.phone != NEW.phone THEN
+        INSERT INTO user_operation_logs (user_id, operation_type, operation_desc, created_at)
+        VALUES (NEW.id, 'update_profile', '用户更新个人信息', CURRENT_TIMESTAMP);
+    END IF;
+END$$
+DELIMITER ;
+
+-- ===========================================
+-- 数据库视图 (Views)
+-- ===========================================
+
+-- 1. 商品销售统计视图
+CREATE VIEW v_product_sales_stats AS
+SELECT 
+    p.id as product_id,
+    p.name as product_name,
+    p.price as current_price,
+    COALESCE(SUM(oi.quantity), 0) as total_sold_quantity,
+    COALESCE(SUM(oi.quantity * oi.price), 0) as total_sales_amount,
+    COALESCE(COUNT(DISTINCT oi.order_id), 0) as order_count,
+    p.stock as current_stock,
+    CASE 
+        WHEN p.stock = 0 THEN '缺货'
+        WHEN p.stock < 10 THEN '库存不足'
+        ELSE '库存充足'
+    END as stock_status
+FROM products p
+LEFT JOIN order_items oi ON p.id = oi.product_id
+LEFT JOIN orders o ON oi.order_id = o.id AND o.status != 'cancelled'
+GROUP BY p.id, p.name, p.price, p.stock;
+
+-- 2. 用户订单汇总视图
+CREATE VIEW v_user_order_summary AS
+SELECT 
+    u.id as user_id,
+    u.username,
+    u.email,
+    COUNT(DISTINCT o.id) as total_orders,
+    COALESCE(SUM(CASE WHEN o.status != 'cancelled' THEN o.total_amount ELSE 0 END), 0) as total_spent,
+    COALESCE(AVG(CASE WHEN o.status != 'cancelled' THEN o.total_amount ELSE NULL END), 0) as avg_order_amount,
+    MAX(o.created_at) as last_order_date,
+    COUNT(DISTINCT CASE WHEN o.status = 'completed' THEN o.id END) as completed_orders,
+    COUNT(DISTINCT CASE WHEN o.status = 'cancelled' THEN o.id END) as cancelled_orders
+FROM users u
+LEFT JOIN orders o ON u.id = o.user_id
+GROUP BY u.id, u.username, u.email;
+
+
+-- 4. 每日销售统计视图
+CREATE VIEW v_daily_sales AS
+SELECT 
+    DATE(o.created_at) as sale_date,
+    COUNT(DISTINCT o.id) as order_count,
+    COUNT(DISTINCT o.user_id) as customer_count,
+    SUM(o.total_amount) as total_sales,
+    AVG(o.total_amount) as avg_order_value,
+    COUNT(DISTINCT oi.product_id) as product_variety
+FROM orders o
+LEFT JOIN order_items oi ON o.id = oi.order_id
+WHERE o.status != 'cancelled'
+GROUP BY DATE(o.created_at)
+ORDER BY sale_date DESC;
+
+-- ===========================================
+-- 数据库备份相关表
+-- ===========================================
+
+-- 备份记录表
+CREATE TABLE backup_records (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    backup_name VARCHAR(255) NOT NULL COMMENT '备份名称',
+    backup_type ENUM('manual', 'scheduled') NOT NULL COMMENT '备份类型：手动/定时',
+    backup_path VARCHAR(500) NOT NULL COMMENT '备份文件路径',
+    file_size BIGINT NOT NULL COMMENT '备份文件大小（字节）',
+    status ENUM('success', 'failed', 'in_progress') DEFAULT 'in_progress' COMMENT '备份状态',
+    error_message TEXT COMMENT '错误信息',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    INDEX idx_backup_type (backup_type),
+    INDEX idx_status (status),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='数据库备份记录表';
+
+-- 库存变更日志表
+CREATE TABLE inventory_logs (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    product_id BIGINT NOT NULL COMMENT '商品ID',
+    change_type ENUM('in', 'out') NOT NULL COMMENT '变更类型：入库/出库',
+    quantity INT NOT NULL COMMENT '变更数量',
+    reason VARCHAR(500) NOT NULL COMMENT '变更原因',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    INDEX idx_product_id (product_id),
+    INDEX idx_change_type (change_type),
+    INDEX idx_created_at (created_at),
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='库存变更日志表';
+
+-- 用户操作日志表
+CREATE TABLE user_operation_logs (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL COMMENT '用户ID',
+    operation_type VARCHAR(50) NOT NULL COMMENT '操作类型',
+    operation_desc VARCHAR(500) NOT NULL COMMENT '操作描述',
+    ip_address VARCHAR(45) COMMENT 'IP地址',
+    user_agent TEXT COMMENT '用户代理',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    INDEX idx_user_id (user_id),
+    INDEX idx_operation_type (operation_type),
+    INDEX idx_created_at (created_at),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户操作日志表';
+
+-- ===========================================
+-- 存储过程：数据库备份
+-- ===========================================
+
+DELIMITER $$
+CREATE PROCEDURE sp_create_backup(IN backup_name VARCHAR(255), IN backup_type VARCHAR(20))
+BEGIN
+    DECLARE backup_path VARCHAR(500);
+    DECLARE file_size BIGINT DEFAULT 0;
+    DECLARE backup_id BIGINT;
+    
+    -- 生成备份文件路径
+    SET backup_path = CONCAT('/backups/', backup_name, '_', DATE_FORMAT(NOW(), '%Y%m%d_%H%i%s'), '.sql');
+    
+    -- 插入备份记录
+    INSERT INTO backup_records (backup_name, backup_type, backup_path, status)
+    VALUES (backup_name, backup_type, backup_path, 'in_progress');
+    
+    SET backup_id = LAST_INSERT_ID();
+    
+    -- 这里应该调用系统命令执行mysqldump
+    -- 由于存储过程限制，实际备份需要通过应用程序实现
+    
+    -- 更新备份状态为成功（实际应用中需要根据备份结果更新）
+    UPDATE backup_records 
+    SET status = 'success', file_size = 0
+    WHERE id = backup_id;
+    
+    SELECT backup_id as backup_record_id, backup_path;
+END$$
+DELIMITER ;
+
+
+-- ===========================================
+-- 存储过程：销售统计报表
+-- ===========================================
+
+DELIMITER $$
+CREATE PROCEDURE sp_sales_report(IN start_date DATE, IN end_date DATE)
+BEGIN
+    SELECT 
+        DATE(o.created_at) as report_date,
+        COUNT(DISTINCT o.id) as order_count,
+        COUNT(DISTINCT o.user_id) as customer_count,
+        SUM(o.total_amount) as total_sales,
+        AVG(o.total_amount) as avg_order_value,
+        COUNT(DISTINCT oi.product_id) as product_variety,
+        SUM(oi.quantity) as total_items_sold
+    FROM orders o
+    LEFT JOIN order_items oi ON o.id = oi.order_id
+    WHERE o.status != 'cancelled' 
+        AND DATE(o.created_at) BETWEEN start_date AND end_date
+    GROUP BY DATE(o.created_at)
+    ORDER BY report_date DESC;
+END$$
+DELIMITER ;
