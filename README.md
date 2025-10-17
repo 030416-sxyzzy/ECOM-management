@@ -1,39 +1,137 @@
-# 电商订单管理系统 (E-commerce Order Management System)
+# 电商管理系统
 
-## 项目简介
-一个基于现代Web技术栈的电商订单管理系统，支持订单全生命周期管理。
+一个基于 Spring Boot + Vue3 + MySQL 的全栈电商管理系统。
 
-## 技术栈
-- **前端**: Vue 3 + TypeScript + Element Plus + Tailwind CSS
-- **后端**: Spring Boot 2.7+ + Spring MVC + MyBatis-Plus
-- **数据库**: MySQL 8.0 + Redis
-- **工具**: Vite, Pinia, Vue Router, Swagger
+## 🚀 技术栈
 
-## 项目结构
+### 后端
+- Spring Boot 3.2.0
+- MyBatis 3.5.14
+- MySQL 8.0
+- Maven
+
+### 前端
+- Vue 3
+- TypeScript
+- Element Plus
+- Pinia
+- Vite
+
+## 📦 功能模块
+
+- ✅ 商品管理（分类、搜索、筛选）
+- ✅ 购物车管理（增删改查）
+- ✅ 价格区间筛选
+- ✅ 实时数据更新
+
+## 🛠️ 快速开始
+
+### 1. 数据库配置
+
+```bash
+# 创建数据库
+mysql -u root -p
+
+# 导入数据
+source database/init.sql
+```
+
+### 2. 启动后端
+
+```bash
+cd backend
+mvn spring-boot:run
+```
+
+后端服务将运行在 `http://localhost:8080`
+
+### 3. 启动前端
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+前端服务将运行在 `http://localhost:3000`
+
+## 📚 API 文档
+
+详见 [API接口文档](docs/API接口文档.md)
+
+## 🔧 配置说明
+
+### 后端配置
+
+编辑 `backend/src/main/resources/application.yml`:
+
+```yaml
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/ecom_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: root
+    password: your_password
+```
+
+### 前端配置
+
+API地址配置在 `frontend/src/api/index.ts`:
+
+```typescript
+const API_BASE_URL = 'http://localhost:8080/api'
+```
+
+## 📝 项目结构
+
 ```
 ecom-management/
-├── frontend/          # 前端应用
-├── backend/           # 后端API服务
-├── database/          # 数据库脚本和迁移
-├── docs/             # 项目文档
-├── scripts/          # 部署和工具脚本
-└── shared/           # 共享类型定义和工具
+├── backend/                 # 后端项目
+│   ├── src/
+│   │   ├── main/
+│   │   │   ├── java/       # Java源码
+│   │   │   └── resources/  # 配置文件
+│   └── pom.xml
+├── frontend/               # 前端项目
+│   ├── src/
+│   │   ├── api/           # API接口
+│   │   ├── components/    # 组件
+│   │   ├── stores/        # 状态管理
+│   │   ├── views/         # 页面
+│   │   └── router/        # 路由
+│   └── package.json
+├── database/              # 数据库脚本
+│   └── init.sql
+└── docs/                  # 文档
+    └── API接口文档.md
 ```
 
-## 开发环境设置
-1. 克隆仓库
-2. 安装依赖: `npm install`
-3. 配置数据库连接
-4. 启动开发服务器: `npm run dev`
+## 🎯 核心功能
 
-## 团队协作
-- 使用Git Flow分支策略
-- 代码审查必须通过才能合并
-- 遵循统一的代码规范
+### 商品管理
+- 按分类浏览
+- 关键词搜索
+- 价格区间筛选（200以下/200~500/500以上）
+- 分页展示
 
-## 贡献指南
-请查看 [CONTRIBUTING.md](./CONTRIBUTING.md) 了解详细的贡献指南。
+### 购物车
+- 添加商品
+- 修改数量（自动去重）
+- 删除商品
+- 清空购物车
+- 实时统计
 
-## 许可证
-MIT License
+## ⚠️ 注意事项
 
+1. 确保 MySQL 服务已启动
+2. 确保端口 8080 和 3000 未被占用
+3. Node.js 版本建议 16.0+
+4. Java 版本要求 17+
+
+## 📄 License
+
+MIT
+
+---
+
+**开发时间**: 2025年10月
+**作者**: [Your Name]
