@@ -1,10 +1,6 @@
 package com.ecom.management.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -13,11 +9,9 @@ import java.time.LocalDateTime;
  * 商品实体
  */
 @Data
-@EqualsAndHashCode(callSuper = false)
-@TableName("products")
 public class Product {
 
-    @TableId(value = "id", type = IdType.AUTO)
+    /** 商品ID */
     private Long id;
 
     /** 商品名称 */
@@ -47,5 +41,3 @@ public class Product {
     /** 更新时间 */
     private LocalDateTime updatedAt;
 }
-
-
