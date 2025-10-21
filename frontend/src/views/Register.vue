@@ -17,14 +17,6 @@
           ></el-input>
         </el-form-item>
         
-        <el-form-item prop="phone">
-          <el-input 
-            v-model="registerForm.phone" 
-            placeholder="请输入手机号"
-            prefix-icon="el-icon-mobile"
-          ></el-input>
-        </el-form-item>
-        
         <el-form-item prop="email">
           <el-input 
             v-model="registerForm.email" 
@@ -33,28 +25,11 @@
           ></el-input>
         </el-form-item>
         
-        <el-form-item prop="verificationCode">
-          <div class="code-wrapper">
-            <el-input 
-              v-model="registerForm.verificationCode" 
-              placeholder="请输入验证码"
-              prefix-icon="el-icon-shield"
-            ></el-input>
-            <el-button 
-              class="send-code-btn" 
-              :disabled="countdown > 0"
-              @click="sendVerificationCode"
-            >
-              {{ countdown > 0 ? `${countdown}秒后重发` : '发送验证码' }}
-            </el-button>
-          </div>
-        </el-form-item>
-        
         <el-form-item prop="password">
           <el-input 
             v-model="registerForm.password" 
             type="password" 
-            placeholder="请输入密码"
+            placeholder="请输入密码（6-20个字符）"
             prefix-icon="el-icon-lock"
             show-password
           ></el-input>
@@ -68,6 +43,14 @@
             prefix-icon="el-icon-lock"
             show-password
           ></el-input>
+        </el-form-item>
+
+        <!-- 角色选择 -->
+        <el-form-item prop="role">
+          <el-radio-group v-model="registerForm.role">
+            <el-radio label="USER">普通用户</el-radio>
+            <el-radio label="ADMIN">管理员</el-radio>
+          </el-radio-group>
         </el-form-item>
         
         <el-form-item>
@@ -101,17 +84,15 @@ export default {
   setup() {
     const router = useRouter()
     const loading = ref(false)
-    const countdown = ref(0)
     const registerFormRef = ref()
     
     // 注册表单
     const registerForm = reactive({
       username: '',
-      phone: '',
       email: '',
-      verificationCode: '',
       password: '',
-      confirmPassword: ''
+      confirmPassword: '',
+      role: 'USER' // 默认普通用户
     })
     
     // 注册表单验证规则
@@ -120,16 +101,9 @@ export default {
         { required: true, message: '请输入用户名', trigger: 'blur' },
         { min: 3, max: 20, message: '用户名长度在 3 到 20 个字符', trigger: 'blur' }
       ],
-      phone: [
-        { required: true, message: '请输入手机号', trigger: 'blur' },
-        { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
-      ],
       email: [
         { required: true, message: '请输入邮箱', trigger: 'blur' },
         { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
-      ],
-      verificationCode: [
-        { required: true, message: '请输入验证码', trigger: 'blur' }
       ],
       password: [
         { required: true, message: '请输入密码', trigger: 'blur' },
@@ -147,38 +121,10 @@ export default {
           }, 
           trigger: 'blur' 
         }
+      ],
+      role: [
+        { required: true, message: '请选择用户角色', trigger: 'change' }
       ]
-    }
-    
-    // 发送手机验证码
-    const sendVerificationCode = async () => {
-      if (!registerForm.phone) {
-        ElMessage.warning('请输入手机号')
-        return
-      }
-      
-      // 验证手机号格式
-      const phoneRegex = /^1[3-9]\d{9}$/
-      if (!phoneRegex.test(registerForm.phone)) {
-        ElMessage.warning('请输入正确的手机号')
-        return
-      }
-      
-      try {
-        await authApi.sendVerificationCode(registerForm.phone)
-        ElMessage.success('验证码已发送')
-        
-        // 开始倒计时
-        countdown.value = 60
-        const timer = setInterval(() => {
-          countdown.value--
-          if (countdown.value <= 0) {
-            clearInterval(timer)
-          }
-        }, 1000)
-      } catch (error) {
-        ElMessage.error('发送验证码失败')
-      }
     }
     
     // 处理注册
@@ -189,13 +135,19 @@ export default {
         if (valid) {
           loading.value = true
           try {
-            await authApi.register(registerForm)
+            const response = await authApi.register({
+              username: registerForm.username,
+              email: registerForm.email,
+              password: registerForm.password,
+              role: registerForm.role
+            })
+            
             ElMessage.success('注册成功，请登录')
             
             // 注册成功后跳转到登录页
             router.push('/login')
           } catch (error) {
-            ElMessage.error(error.message || '注册失败')
+            ElMessage.error(error.response?.data?.message || error.message || '注册失败')
           } finally {
             loading.value = false
           }
@@ -205,11 +157,9 @@ export default {
     
     return {
       loading,
-      countdown,
       registerForm,
       registerRules,
       registerFormRef,
-      sendVerificationCode,
       handleRegister
     }
   }

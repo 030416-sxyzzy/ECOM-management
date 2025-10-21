@@ -5,22 +5,22 @@
       
       <!-- 账号密码登录表单 -->
       <el-form 
-        :model="accountForm" 
-        :rules="accountRules" 
-        ref="accountFormRef"
+        :model="loginForm" 
+        :rules="loginRules" 
+        ref="loginFormRef"
         class="login-form"
       >
-        <el-form-item prop="account">
+        <el-form-item prop="email">
           <el-input 
-            v-model="accountForm.account" 
-            placeholder="请输入账号（邮箱/手机号/用户名）"
-            prefix-icon="el-icon-user"
+            v-model="loginForm.email" 
+            placeholder="请输入邮箱"
+            prefix-icon="el-icon-message"
           ></el-input>
         </el-form-item>
         
         <el-form-item prop="password">
           <el-input 
-            v-model="accountForm.password" 
+            v-model="loginForm.password" 
             type="password" 
             placeholder="请输入密码"
             prefix-icon="el-icon-lock"
@@ -29,10 +29,11 @@
         </el-form-item>
 
         <!-- 用户类型选择 -->
-        <el-form-item prop="userType">
-          <el-radio-group v-model="accountForm.userType">
-            <el-radio label="admin">管理员</el-radio>
-            <el-radio label="user">普通用户</el-radio>
+        <el-form-item>
+          <div style="text-align: center; margin-bottom: 10px; color: #606266;">请选择登录身份</div>
+          <el-radio-group v-model="loginForm.role" style="width: 100%; display: flex; justify-content: space-around;">
+            <el-radio label="USER">普通用户</el-radio>
+            <el-radio label="ADMIN">管理员</el-radio>
           </el-radio-group>
         </el-form-item>
         
@@ -67,69 +68,66 @@ export default {
   setup() {
     const router = useRouter()
     const loading = ref(false)
-    const accountFormRef = ref()
+    const loginFormRef = ref()
     
-    // 账号密码登录表单
-    const accountForm = reactive({
-      account: '',
+    // 登录表单
+    const loginForm = reactive({
+      email: '',
       password: '',
-      userType: 'user' // 默认普通用户
+      role: 'USER' // 默认普通用户
     })
     
-    // 账号密码登录表单验证规则
-    const accountRules = {
-      account: [
-        { required: true, message: '请输入账号', trigger: 'blur' }
+    // 登录表单验证规则
+    const loginRules = {
+      email: [
+        { required: true, message: '请输入邮箱', trigger: 'blur' },
+        { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
       ],
       password: [
         { required: true, message: '请输入密码', trigger: 'blur' }
-      ],
-      userType: [
-        { required: true, message: '请选择用户类型', trigger: 'change' }
       ]
     }
     
     // 处理登录
     const handleLogin = async () => {
-      if (!accountFormRef.value) return
+      if (!loginFormRef.value) return
       
-      await accountFormRef.value.validate(async (valid) => {
+      await loginFormRef.value.validate(async (valid) => {
         if (valid) {
           loading.value = true
           try {
-            // 构造登录请求数据
-            const loginData = {
-              ...accountForm,
-              // 这里可以添加额外的处理，根据userType设置对应的role值
-              role: accountForm.userType === 'admin' ? 1 : 0
+            // 调用登录接口
+            const response = await authApi.login({
+              email: loginForm.email,
+              password: loginForm.password
+            })
+            
+            const userData = response.data.user
+            const token = response.data.token
+            
+            // 检查用户实际角色与选择角色是否匹配
+            if (userData.role !== loginForm.role) {
+              ElMessage.error(`您的账号是${userData.role === 'ADMIN' ? '管理员' : '普通用户'}，请选择正确的登录身份`)
+              loading.value = false
+              return
             }
             
-            // 调用登录接口
-            const res = await authApi.login(loginData)
-            
             // 保存token和用户信息
-            localStorage.setItem('token', res.data.token)
-            localStorage.setItem('userInfo', JSON.stringify({
-              id: res.data.id,
-              username: res.data.username,
-              email: res.data.email,
-              phone: res.data.phone,
-              role: res.data.role,
-              userType: accountForm.userType // 保存用户选择的类型
-            }))
+            localStorage.setItem('token', token)
+            localStorage.setItem('user', JSON.stringify(userData))
             
             ElMessage.success('登录成功')
             
-            // 根据用户类型跳转到不同页面
-            if (accountForm.userType === 'admin') {
-              // 管理员跳转到商品管理页面
-              router.push('/product-management')
+            // 根据用户角色跳转到不同页面
+            if (userData.role === 'ADMIN') {
+              // 管理员跳转到首页（ysy的商品管理和订单管理）
+              router.push('/')
             } else {
-              // 普通用户跳转到购物车页面
-              router.push('/cart-management')
+              // 普通用户跳转到商品列表页（zsj的购物车和商品分类）
+              router.push('/products')
             }
           } catch (error) {
-            ElMessage.error(error.message || '登录失败')
+            ElMessage.error(error.response?.data?.message || error.message || '登录失败')
           } finally {
             loading.value = false
           }
@@ -139,9 +137,9 @@ export default {
     
     return {
       loading,
-      accountForm,
-      accountRules,
-      accountFormRef,
+      loginForm,
+      loginRules,
+      loginFormRef,
       handleLogin
     }
   }

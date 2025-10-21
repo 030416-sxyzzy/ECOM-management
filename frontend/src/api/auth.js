@@ -5,8 +5,8 @@ import axios from '../utils/axios'
  */
 export default {
   /**
-   * 用户账号密码登录
-   * @param {Object} data 登录信息
+   * 用户登录
+   * @param {Object} data 登录信息 { email, password }
    * @returns {Promise}
    */
   login(data) {
@@ -14,17 +14,8 @@ export default {
   },
   
   /**
-   * 手机验证码登录
-   * @param {Object} data 手机登录信息
-   * @returns {Promise}
-   */
-  phoneLogin(data) {
-    return axios.post('/auth/phone-login', data)
-  },
-  
-  /**
    * 用户注册
-   * @param {Object} data 注册信息
+   * @param {Object} data 注册信息 { username, email, password, role }
    * @returns {Promise}
    */
   register(data) {
@@ -32,20 +23,12 @@ export default {
   },
   
   /**
-   * 发送手机验证码
-   * @param {String} phone 手机号
+   * 获取当前用户信息
+   * @param {Number} userId 用户ID
    * @returns {Promise}
    */
-  sendVerificationCode(phone) {
-    return axios.post('/auth/send-code', { phone })
-  },
-  
-  /**
-   * 获取验证码图片
-   * @returns {Promise}
-   */
-  getCaptcha() {
-    return axios.get('/auth/captcha')
+  getCurrentUser(userId) {
+    return axios.get('/auth/me', { params: { userId } })
   },
   
   /**
@@ -53,6 +36,9 @@ export default {
    * @returns {Promise}
    */
   logout() {
-    return axios.post('/auth/logout')
+    // 清除本地存储
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    return Promise.resolve()
   }
 }
