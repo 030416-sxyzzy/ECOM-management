@@ -30,34 +30,32 @@ const routes = [
       requiresAuth: true
     }
   },
-  // 管理员页面
+  // 商品浏览
   {
-    path: '/product-management',
-    name: 'ProductManagement',
-    component: () => import('../views/ProductManagement.vue'),
+    path: '/products',
+    name: 'Products',
+    component: () => import('../views/ProductsView.vue'),
     meta: {
-      title: '商品管理',
-      requiresAuth: true,
-      requiresAdmin: true
+      title: '商品列表',
+      requiresAuth: true
     }
   },
   {
-    path: '/order-management',
-    name: 'OrderManagement',
-    component: () => import('../views/OrderManagement.vue'),
+    path: '/product/:id',
+    name: 'ProductDetail',
+    component: () => import('../views/ProductDetailView.vue'),
     meta: {
-      title: '订单管理',
-      requiresAuth: true,
-      requiresAdmin: true
+      title: '商品详情',
+      requiresAuth: true
     }
   },
-  // 普通用户页面
+  // 购物车
   {
-    path: '/cart-management',
-    name: 'CartManagement',
-    component: () => import('../views/CartManagement.vue'),
+    path: '/cart',
+    name: 'Cart',
+    component: () => import('../views/CartView.vue'),
     meta: {
-      title: '购物车管理',
+      title: '购物车',
       requiresAuth: true
     }
   }
