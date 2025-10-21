@@ -1,9 +1,5 @@
 package com.ecom.management.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -13,29 +9,28 @@ import java.time.LocalDateTime;
  * 订单实体类
  */
 @Data
-@TableName("orders")
 public class Order {
-    @TableId(type = IdType.AUTO)
+    /** 订单ID */
     private Long id;
 
-    @TableField("user_id")
+    /** 用户ID */
     private Long userId;
 
-    @TableField("order_number")
+    /** 订单编号 */
     private String orderNumber;
 
-    @TableField("total_amount")
+    /** 总金额 */
     private BigDecimal totalAmount;
 
-    @TableField("status")
+    /** 订单状态 */
     private String status;
 
-    @TableField("shipping_address")
+    /** 配送地址 */
     private String shippingAddress;
 
-    @TableField("created_at")
+    /** 创建时间 */
     private LocalDateTime createdAt;
 
-    @TableField("updated_at")
+    /** 更新时间 */
     private LocalDateTime updatedAt;
 }

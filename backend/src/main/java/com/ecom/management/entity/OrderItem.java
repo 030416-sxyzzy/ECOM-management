@@ -1,9 +1,5 @@
 package com.ecom.management.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -13,23 +9,22 @@ import java.time.LocalDateTime;
  * 订单详情实体类
  */
 @Data
-@TableName("order_items")
 public class OrderItem {
-    @TableId(type = IdType.AUTO)
+    /** 订单明细ID */
     private Long id;
 
-    @TableField("order_id")
+    /** 订单ID */
     private Long orderId;
 
-    @TableField("product_id")
+    /** 商品ID */
     private Long productId;
 
-    @TableField("quantity")
+    /** 数量 */
     private Integer quantity;
 
-    @TableField("price")
+    /** 价格 */
     private BigDecimal price;
 
-    @TableField("created_at")
+    /** 创建时间 */
     private LocalDateTime createdAt;
 }

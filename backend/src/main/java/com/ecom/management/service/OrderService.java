@@ -1,6 +1,5 @@
 package com.ecom.management.service;
 
-import com.baomidou.mybatisplus.extension.service.IService;
 import com.ecom.management.entity.Order;
 import com.ecom.management.dto.OrderDTO;
 import com.ecom.management.vo.OrderVO;
@@ -9,7 +8,7 @@ import java.util.List;
 /**
  * 订单服务接口
  */
-public interface OrderService extends IService<Order> {
+public interface OrderService {
 
     /**
      * 创建订单
@@ -40,4 +39,10 @@ public interface OrderService extends IService<Order> {
      * @return 是否更新成功
      */
     boolean updateOrderStatus(Long orderId, String status);
+    
+    /**
+     * 查询所有订单
+     * @return 订单列表
+     */
+    List<Order> getAllOrders();
 }

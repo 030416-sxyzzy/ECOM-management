@@ -1,11 +1,8 @@
 package com.ecom.management.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.ecom.management.entity.Order;
 import com.ecom.management.entity.OrderItem;
 import com.ecom.management.entity.Product;
-import com.ecom.management.entity.CartItem;
 import com.ecom.management.dto.OrderDTO;
 import com.ecom.management.dto.OrderItemDTO;
 import com.ecom.management.vo.OrderVO;
@@ -16,33 +13,26 @@ import com.ecom.management.mapper.OrderItemMapper;
 import com.ecom.management.mapper.ProductMapper;
 import com.ecom.management.mapper.CartItemMapper;
 import com.ecom.management.service.OrderService;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.math.BigDecimal;
 import java.util.UUID;
 
 /**
  * 订单服务实现类
  */
 @Service
-public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements OrderService {
+@RequiredArgsConstructor
+public class OrderServiceImpl implements OrderService {
 
-    @Autowired
-    private OrderMapper orderMapper;
-
-    @Autowired
-    private OrderItemMapper orderItemMapper;
-
-    @Autowired
-    private ProductMapper productMapper;
-
-    @Autowired
-    private CartItemMapper cartItemMapper;
+    private final OrderMapper orderMapper;
+    private final OrderItemMapper orderItemMapper;
+    private final ProductMapper productMapper;
+    private final CartItemMapper cartItemMapper;
 
     /**
      * 创建订单（事务控制）
@@ -55,7 +45,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
         // 2. 检查库存
         for (OrderItemDTO item : orderDTO.getOrderItems()) {
-            Product product = productMapper.selectById(item.getProductId());
+            Product product = productMapper.findById(item.getProductId());
             if (product == null) {
                 throw new Exception("商品不存在：" + item.getProductId());
             }
@@ -87,7 +77,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         }
 
         // 5. 清空用户购物车
-        cartItemMapper.delete(new QueryWrapper<CartItem>().eq("user_id", orderDTO.getUserId()));
+        cartItemMapper.deleteByUserId(orderDTO.getUserId());
 
         return order.getId();
     }
@@ -97,12 +87,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
      */
     @Override
     public List<OrderVO> getUserOrders(Long userId) {
-        List<Order> orders = orderMapper.selectList(
-                new QueryWrapper<Order>()
-                        .eq("user_id", userId)
-                        .orderByDesc("created_at")
-        );
-
+        List<Order> orders = orderMapper.findByUserId(userId);
         return orders.stream().map(this::convertToOrderVO).collect(Collectors.toList());
     }
 
@@ -111,7 +96,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
      */
     @Override
     public OrderVO getOrderDetail(Long orderId) {
-        Order order = orderMapper.selectById(orderId);
+        Order order = orderMapper.findById(orderId);
         if (order == null) {
             return null;
         }
@@ -124,11 +109,15 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean updateOrderStatus(Long orderId, String status) {
-        Order order = new Order();
-        order.setId(orderId);
-        order.setStatus(status);
-        order.setUpdatedAt(LocalDateTime.now());
-        return orderMapper.updateById(order) > 0;
+        return orderMapper.updateStatus(orderId, status) > 0;
+    }
+    
+    /**
+     * 查询所有订单
+     */
+    @Override
+    public List<Order> getAllOrders() {
+        return orderMapper.findAll();
     }
 
     /**
@@ -155,9 +144,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         vo.setCreatedAt(order.getCreatedAt());
 
         // 查询订单详情
-        List<OrderItem> items = orderItemMapper.selectList(
-                new QueryWrapper<OrderItem>().eq("order_id", order.getId())
-        );
+        List<OrderItem> items = orderItemMapper.findByOrderId(order.getId());
 
         List<OrderItemVO> itemVOs = items.stream().map(item -> {
             OrderItemVO itemVO = new OrderItemVO();
@@ -167,7 +154,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             itemVO.setPrice(item.getPrice());
 
             // 查询商品名称
-            Product product = productMapper.selectById(item.getProductId());
+            Product product = productMapper.findById(item.getProductId());
             if (product != null) {
                 itemVO.setProductName(product.getName());
             }
