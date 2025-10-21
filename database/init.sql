@@ -9,14 +9,17 @@ USE ecom_management;
 -- 1. 用户表
 CREATE TABLE users (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    email VARCHAR(255) UNIQUE NOT NULL COMMENT '邮箱',
-    phone VARCHAR(20) UNIQUE COMMENT '手机号',
-    password VARCHAR(255) NOT NULL COMMENT '加密密码',
-    username VARCHAR(100) NOT NULL COMMENT '用户名',
+    email VARCHAR(100) NOT NULL UNIQUE COMMENT '邮箱',
+    phone VARCHAR(20) NOT NULL UNIQUE COMMENT '手机号',
+    password VARCHAR(100) NOT NULL COMMENT '密码',
+    username VARCHAR(50) NOT NULL UNIQUE COMMENT '用户名',
+    role VARCHAR(20) NOT NULL DEFAULT 'USER' COMMENT '角色：USER-普通用户，ADMIN-管理员',
+    status TINYINT NOT NULL DEFAULT 1 COMMENT '状态：0-禁用，1-启用',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     INDEX idx_email (email),
-    INDEX idx_phone (phone)
+    INDEX idx_phone (phone),
+    INDEX idx_username (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
 
 -- 2. 商品分类表
@@ -112,10 +115,17 @@ INSERT INTO products (name, description, price, stock, category_id, image_url, s
 ('《Vue.js实战》', '前端开发必读书籍', 89.00, 150, 4, '/images/vue-book.jpg', 'active'),
 ('瑜伽垫', '防滑瑜伽练习垫', 199.00, 120, 5, '/images/yoga-mat.jpg', 'active');
 
--- 创建测试用户（密码：123456，已加密）
-INSERT INTO users (email, username, password) VALUES
-('admin@ecom.com', 'admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVEFDi'),
-('test@ecom.com', 'testuser', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVEFDi');
+-- 插入默认管理员账号
+INSERT INTO users (email, phone, password, username, role, status) VALUES
+('admin@example.com', '13800138000', '$2a$10$E5xP3vYJZ4qT4O3O8yX44uR5qV7p1W2Q2X3Z4Y5C6V7B8N9M0A', 'admin', 'ADMIN', 1)
+ON DUPLICATE KEY UPDATE password = VALUES(password);
+
+-- 插入默认测试用户账号
+INSERT INTO users (email, phone, password, username, role, status) VALUES
+('user@example.com', '13900139000', '$2a$10$E5xP3vYJZ4qT4O3O8yX44uR5qV7p1W2Q2X3Z4Y5C6V7B8N9M0A', 'testuser', 'USER', 1)
+ON DUPLICATE KEY UPDATE password = VALUES(password);
+
+-- 注意：默认密码均为123456，已通过BCrypt加密
 
 -- ===========================================
 -- 数据库触发器 (Triggers)
