@@ -260,8 +260,8 @@ public class DatabaseBackupServiceImpl implements DatabaseBackupService {
      */
     private String extractHost(String url) {
         // jdbc:mysql://localhost:3306/database_name
-        String[] parts = url.split("//")[1].split("/")[0];
-        return parts.split(":")[0];
+        String hostPort = url.split("//")[1].split("/")[0];
+        return hostPort.split(":")[0];
     }
     
     /**
