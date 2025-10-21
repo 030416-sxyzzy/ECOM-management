@@ -1,13 +1,13 @@
 package com.ecom.management.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.ecom.management.dto.PageResult;
 import com.ecom.management.entity.Product;
 import com.ecom.management.mapper.ProductMapper;
 import com.ecom.management.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -29,41 +29,43 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public Product update(Product product) {
-        productMapper.updateById(product);
-        return productMapper.selectById(product.getId());
+        productMapper.update(product);
+        return productMapper.findById(product.getId());
     }
 
     @Override
     public Product findById(Long id) {
-        return productMapper.selectById(id);
+        return productMapper.findById(id);
     }
 
     @Override
-    public Page<Product> pageList(String nameKeyword, Long categoryId, String status, int page, int size) {
-        QueryWrapper<Product> query = new QueryWrapper<>();
-        if (nameKeyword != null && !nameKeyword.isEmpty()) {
-            query.like("name", nameKeyword);
-        }
-        if (categoryId != null) {
-            query.eq("category_id", categoryId);
-        }
-        if (status != null && !status.isEmpty()) {
-            query.eq("status", status);
-        }
-        query.orderByDesc("updated_at");
-        Page<Product> pageObj = new Page<>(page, size);
-        return productMapper.selectPage(pageObj, query);
+    public PageResult<Product> pageList(String nameKeyword, Long categoryId, String status, int page, int size) {
+        int offset = (page - 1) * size;
+        List<Product> records = productMapper.findByPage(nameKeyword, categoryId, status, offset, size);
+        int total = productMapper.countByPage(nameKeyword, categoryId, status);
+        return new PageResult<>(records, total, page, size);
     }
 
     @Override
     public List<Product> listByCategory(Long categoryId) {
-        QueryWrapper<Product> query = new QueryWrapper<>();
-        if (categoryId != null) {
-            query.eq("category_id", categoryId);
-        }
-        query.eq("status", "active");
-        query.orderByDesc("updated_at");
-        return productMapper.selectList(query);
+        return productMapper.findByCategory(categoryId);
+    }
+
+    @Override
+    public List<Product> searchProducts(Long categoryId, String keyword, BigDecimal minPrice, BigDecimal maxPrice, 
+                                       String sortBy, String sortOrder, int page, int pageSize) {
+        int offset = (page - 1) * pageSize;
+        return productMapper.searchProducts(categoryId, keyword, minPrice, maxPrice, sortBy, sortOrder, offset, pageSize);
+    }
+
+    @Override
+    public List<Product> getHotProducts(int limit) {
+        return productMapper.findHotProducts(limit);
+    }
+
+    @Override
+    public List<Product> getRecommendedProducts(int limit) {
+        return productMapper.findRecommendedProducts(limit);
     }
 }
 

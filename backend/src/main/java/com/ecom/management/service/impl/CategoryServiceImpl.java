@@ -1,6 +1,5 @@
 package com.ecom.management.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.ecom.management.entity.Category;
 import com.ecom.management.mapper.CategoryMapper;
 import com.ecom.management.service.CategoryService;
@@ -17,9 +16,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public List<Category> listAll() {
-        QueryWrapper<Category> query = new QueryWrapper<>();
-        query.orderByAsc("name");
-        return categoryMapper.selectList(query);
+        return categoryMapper.findAll();
     }
 }
 

@@ -1,6 +1,6 @@
 package com.ecom.management.controller;
 
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.ecom.management.dto.PageResult;
 import com.ecom.management.entity.Product;
 import com.ecom.management.service.ProductService;
 import lombok.RequiredArgsConstructor;
@@ -41,13 +41,13 @@ public class ProductController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<Product>> page(
+    public ResponseEntity<PageResult<Product>> page(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size) {
-        Page<Product> data = productService.pageList(keyword, categoryId, status, page, size);
+        PageResult<Product> data = productService.pageList(keyword, categoryId, status, page, size);
         return ResponseEntity.ok(data);
     }
 
