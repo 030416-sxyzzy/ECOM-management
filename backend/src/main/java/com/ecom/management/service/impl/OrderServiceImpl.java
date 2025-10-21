@@ -61,6 +61,9 @@ public class OrderServiceImpl implements OrderService {
         order.setTotalAmount(orderDTO.getTotalAmount());
         order.setStatus(OrderStatus.PENDING.getCode());
         order.setShippingAddress(orderDTO.getShippingAddress());
+        order.setReceiverName(orderDTO.getReceiverName());
+        order.setReceiverPhone(orderDTO.getReceiverPhone());
+        order.setReceiverAddress(orderDTO.getReceiverAddress());
         order.setCreatedAt(LocalDateTime.now());
         order.setUpdatedAt(LocalDateTime.now());
         orderMapper.insert(order);
@@ -116,8 +119,9 @@ public class OrderServiceImpl implements OrderService {
      * 查询所有订单
      */
     @Override
-    public List<Order> getAllOrders() {
-        return orderMapper.findAll();
+    public List<OrderVO> getAllOrders() {
+        List<Order> orders = orderMapper.findAll();
+        return orders.stream().map(this::convertToOrderVO).collect(Collectors.toList());
     }
 
     /**
@@ -136,11 +140,15 @@ public class OrderServiceImpl implements OrderService {
     private OrderVO convertToOrderVO(Order order) {
         OrderVO vo = new OrderVO();
         vo.setId(order.getId());
+        vo.setUserId(order.getUserId());
         vo.setOrderNumber(order.getOrderNumber());
         vo.setTotalAmount(order.getTotalAmount());
         vo.setStatus(order.getStatus());
         vo.setStatusName(OrderStatus.getByCode(order.getStatus()).getDescription());
         vo.setShippingAddress(order.getShippingAddress());
+        vo.setReceiverName(order.getReceiverName());
+        vo.setReceiverPhone(order.getReceiverPhone());
+        vo.setReceiverAddress(order.getReceiverAddress());
         vo.setCreatedAt(order.getCreatedAt());
 
         // 查询订单详情

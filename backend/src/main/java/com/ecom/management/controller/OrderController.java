@@ -32,6 +32,15 @@ public class OrderController {
     }
 
     /**
+     * 获取所有订单列表（管理员）
+     */
+    @GetMapping
+    public Result<List<OrderVO>> getAllOrders() {
+        List<OrderVO> orders = orderService.getAllOrders();
+        return Result.success(orders);
+    }
+
+    /**
      * 获取用户订单列表
      */
     @GetMapping("/user/{userId}")

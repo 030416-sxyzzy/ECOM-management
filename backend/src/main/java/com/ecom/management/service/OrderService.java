@@ -44,5 +44,5 @@ public interface OrderService {
      * 查询所有订单
      * @return 订单列表
      */
-    List<Order> getAllOrders();
+    List<OrderVO> getAllOrders();
 }

@@ -118,14 +118,14 @@ export default {
             
             ElMessage.success('登录成功')
             
-            // 根据用户角色跳转到不同页面
-            if (userData.role === 'ADMIN') {
-              // 管理员跳转到首页（ysy的商品管理和订单管理）
-              router.push('/')
-            } else {
-              // 普通用户跳转到商品列表页（zsj的购物车和商品分类）
-              router.push('/products')
-            }
+              // 根据用户角色跳转到不同页面
+              if (userData.role === 'ADMIN') {
+                // 管理员跳转到管理后台（商品管理和订单管理）
+                router.push('/admin')
+              } else {
+                // 普通用户跳转到商品列表页（购物车和商品分类）
+                router.push('/products')
+              }
           } catch (error) {
             ElMessage.error(error.response?.data?.message || error.message || '登录失败')
           } finally {

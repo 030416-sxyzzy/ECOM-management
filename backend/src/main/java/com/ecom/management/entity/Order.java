@@ -28,6 +28,15 @@ public class Order {
     /** 配送地址 */
     private String shippingAddress;
 
+    /** 收货人姓名 */
+    private String receiverName;
+
+    /** 收货人电话 */
+    private String receiverPhone;
+
+    /** 收货人地址 */
+    private String receiverAddress;
+
     /** 创建时间 */
     private LocalDateTime createdAt;
 

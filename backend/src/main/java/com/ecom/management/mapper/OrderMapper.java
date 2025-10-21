@@ -11,8 +11,8 @@ import java.util.List;
 @Mapper
 public interface OrderMapper {
     
-    @Insert("INSERT INTO orders (user_id, order_number, total_amount, status, shipping_address, created_at, updated_at) " +
-            "VALUES (#{userId}, #{orderNumber}, #{totalAmount}, #{status}, #{shippingAddress}, NOW(), NOW())")
+    @Insert("INSERT INTO orders (user_id, order_number, total_amount, status, shipping_address, receiver_name, receiver_phone, receiver_address, created_at, updated_at) " +
+            "VALUES (#{userId}, #{orderNumber}, #{totalAmount}, #{status}, #{shippingAddress}, #{receiverName}, #{receiverPhone}, #{receiverAddress}, NOW(), NOW())")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(Order order);
     

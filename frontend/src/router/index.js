@@ -30,6 +30,17 @@ const routes = [
       requiresAuth: true
     }
   },
+  // 管理后台
+  {
+    path: '/admin',
+    name: 'AdminDashboard',
+    component: () => import('../views/AdminDashboard.vue'),
+    meta: {
+      title: '管理后台',
+      requiresAuth: true,
+      requiresAdmin: true
+    }
+  },
   // 商品浏览
   {
     path: '/products',
@@ -82,12 +93,18 @@ router.beforeEach((to, from, next) => {
     
     // 检查是否需要管理员权限
     if (to.meta.requiresAdmin) {
-      const userInfo = JSON.parse(localStorage.getItem('userInfo'))
-      // 检查用户类型或角色
-      const isAdmin = userInfo && (userInfo.userType === 'admin' || userInfo.role === 1)
-      if (!isAdmin) {
-        // 不是管理员，跳转到购物车页面
-        next({ path: '/cart-management' })
+      const user = localStorage.getItem('user')
+      if (user) {
+        const userObj = JSON.parse(user)
+        const isAdmin = userObj.role === 'ADMIN'
+        if (!isAdmin) {
+          // 不是管理员，跳转到商品列表页面
+          next({ path: '/products' })
+          return
+        }
+      } else {
+        // 没有用户信息，跳转到登录页
+        next({ path: '/login' })
         return
       }
     }

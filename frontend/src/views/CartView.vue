@@ -108,6 +108,39 @@
         </div>
       </div>
     </div>
+
+    <!-- 收货信息对话框 -->
+    <el-dialog
+      v-model="addressDialogVisible"
+      title="填写收货信息"
+      width="500px"
+      :close-on-click-modal="false"
+    >
+      <el-form :model="addressForm" :rules="addressRules" ref="addressFormRef" label-width="100px">
+        <el-form-item label="收货人" prop="receiverName">
+          <el-input v-model="addressForm.receiverName" placeholder="请输入收货人姓名" />
+        </el-form-item>
+        <el-form-item label="联系电话" prop="receiverPhone">
+          <el-input v-model="addressForm.receiverPhone" placeholder="请输入手机号码" maxlength="11" />
+        </el-form-item>
+        <el-form-item label="收货地址" prop="receiverAddress">
+          <el-input
+            v-model="addressForm.receiverAddress"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入详细地址，如：北京市朝阳区xx街道xx号"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="addressDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="confirmCheckout" :loading="checkoutLoading">
+            确认下单
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -117,6 +150,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { CartItem } from '@/types'
 import { useCartStore } from '@/stores/cart'
+import axios from '../utils/axios'
 
 const router = useRouter()
 const cartStore = useCartStore()
@@ -124,6 +158,32 @@ const cartStore = useCartStore()
 // 数据
 const cartItems = ref<(CartItem & { selected: boolean })[]>([])
 const loading = ref(false)
+const addressDialogVisible = ref(false)
+const checkoutLoading = ref(false)
+const addressFormRef = ref()
+
+// 收货信息表单
+const addressForm = ref({
+  receiverName: '',
+  receiverPhone: '',
+  receiverAddress: ''
+})
+
+// 表单验证规则
+const addressRules = {
+  receiverName: [
+    { required: true, message: '请输入收货人姓名', trigger: 'blur' },
+    { min: 2, max: 20, message: '姓名长度在 2 到 20 个字符', trigger: 'blur' }
+  ],
+  receiverPhone: [
+    { required: true, message: '请输入联系电话', trigger: 'blur' },
+    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号码', trigger: 'blur' }
+  ],
+  receiverAddress: [
+    { required: true, message: '请输入收货地址', trigger: 'blur' },
+    { min: 5, max: 200, message: '地址长度在 5 到 200 个字符', trigger: 'blur' }
+  ]
+}
 
 // 计算属性
 const selectAll = ref(false)
@@ -238,15 +298,79 @@ const clearCart = async () => {
   }
 }
 
-// 结算
+// 结算 - 显示收货信息对话框
 const checkout = () => {
   if (selectedCount.value === 0) {
     ElMessage.warning('请选择要结算的商品')
     return
   }
   
-  // 这里可以跳转到订单确认页面
-  ElMessage.info('结算功能开发中...')
+  // 清空表单
+  addressForm.value = {
+    receiverName: '',
+    receiverPhone: '',
+    receiverAddress: ''
+  }
+  
+  // 显示收货信息对话框
+  addressDialogVisible.value = true
+}
+
+// 确认下单
+const confirmCheckout = async () => {
+  // 验证表单
+  if (!addressFormRef.value) return
+  
+  try {
+    await addressFormRef.value.validate()
+  } catch (error) {
+    return
+  }
+  
+  checkoutLoading.value = true
+  
+  try {
+    // 准备订单数据
+    const selectedItems = cartItems.value.filter(item => item.selected)
+    const orderData = {
+      userId: cartStore.userId,
+      totalAmount: totalAmount.value,
+      orderItems: selectedItems.map(item => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        price: item.price
+      })),
+      receiverName: addressForm.value.receiverName,
+      receiverPhone: addressForm.value.receiverPhone,
+      receiverAddress: addressForm.value.receiverAddress,
+      shippingAddress: `${addressForm.value.receiverName}, ${addressForm.value.receiverPhone}, ${addressForm.value.receiverAddress}`
+    }
+    
+    // 调用API创建订单
+    const response = await axios.post('/orders', orderData)
+    
+    if (response.code === 200) {
+      ElMessage.success(`订单创建成功！订单号: ${response.data}`)
+      
+      // 关闭对话框
+      addressDialogVisible.value = false
+      
+      // 删除已结算的购物车商品
+      for (const item of selectedItems) {
+        await cartStore.deleteCartItem(item.id)
+      }
+      
+      // 重新加载购物车
+      await loadCartItems()
+    } else {
+      ElMessage.error(response.message || '创建订单失败')
+    }
+  } catch (error: any) {
+    console.error('结算失败:', error)
+    ElMessage.error(error.response?.data?.message || error.message || '结算失败')
+  } finally {
+    checkoutLoading.value = false
+  }
 }
 
 // 跳转到首页（商品列表页面）

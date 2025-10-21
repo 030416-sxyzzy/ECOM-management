@@ -11,6 +11,9 @@ import java.util.List;
 public class OrderDTO {
     private Long userId;
     private String shippingAddress;
+    private String receiverName;
+    private String receiverPhone;
+    private String receiverAddress;
     private List<OrderItemDTO> orderItems;
     private BigDecimal totalAmount;
 }
