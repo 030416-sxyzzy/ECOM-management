@@ -79,8 +79,10 @@ public class OrderServiceImpl implements OrderService {
             orderItemMapper.insert(orderItem);
         }
 
-        // 5. 清空用户购物车
-        cartItemMapper.deleteByUserId(orderDTO.getUserId());
+        // 5. 删除已结算的购物车商品（只删除选中的商品）
+        if (orderDTO.getCartItemIds() != null && !orderDTO.getCartItemIds().isEmpty()) {
+            cartItemMapper.deleteByIds(orderDTO.getCartItemIds());
+        }
 
         return order.getId();
     }

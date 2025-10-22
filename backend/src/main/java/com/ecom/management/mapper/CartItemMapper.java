@@ -26,4 +26,17 @@ public interface CartItemMapper {
     
     @Delete("DELETE FROM cart_items WHERE user_id = #{userId}")
     int deleteByUserId(Long userId);
+    
+    /**
+     * 批量删除购物车商品（根据ID列表）
+     */
+    @Delete({
+        "<script>",
+        "DELETE FROM cart_items WHERE id IN",
+        "<foreach collection='ids' item='id' open='(' separator=',' close=')'>",
+        "#{id}",
+        "</foreach>",
+        "</script>"
+    })
+    int deleteByIds(@Param("ids") List<Long> ids);
 }

@@ -34,7 +34,7 @@
 
       <!-- 底部 - 只在登录后显示 -->
       <el-footer v-if="showHeader" class="footer">
-        <p>&copy; 2024 电商管理系统. All rights reserved.</p>
+        <p>&copy; 2025 电商管理系统. All rights reserved.</p>
       </el-footer>
     </el-container>
   </div>

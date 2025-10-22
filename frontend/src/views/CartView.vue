@@ -340,6 +340,7 @@ const confirmCheckout = async () => {
         quantity: item.quantity,
         price: item.price
       })),
+      cartItemIds: selectedItems.map(item => item.id), // 添加选中的购物车商品ID列表
       receiverName: addressForm.value.receiverName,
       receiverPhone: addressForm.value.receiverPhone,
       receiverAddress: addressForm.value.receiverAddress,
@@ -355,12 +356,7 @@ const confirmCheckout = async () => {
       // 关闭对话框
       addressDialogVisible.value = false
       
-      // 删除已结算的购物车商品
-      for (const item of selectedItems) {
-        await cartStore.deleteCartItem(item.id)
-      }
-      
-      // 重新加载购物车
+      // 重新加载购物车（后端已删除已结算商品，无需前端再次删除）
       await loadCartItems()
     } else {
       ElMessage.error(response.message || '创建订单失败')
@@ -379,10 +375,13 @@ const goToProducts = () => {
 }
 
 // 监听购物车变化
-watch(() => cartStore.cartItems, () => {
-  cartItems.value = cartStore.cartItems.map(item => ({
+watch(() => cartStore.cartItems, (newItems) => {
+  // 保留用户已经设置的选中状态
+  const selectedMap = new Map(cartItems.value.map(item => [item.id, item.selected]))
+  
+  cartItems.value = newItems.map(item => ({
     ...item,
-    selected: item.selected || true
+    selected: selectedMap.has(item.id) ? selectedMap.get(item.id)! : true // 新商品默认选中，已有商品保留选中状态
   }))
   updateSelectAll()
 }, { deep: true })

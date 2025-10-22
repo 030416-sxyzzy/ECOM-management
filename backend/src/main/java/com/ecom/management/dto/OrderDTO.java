@@ -16,4 +16,5 @@ public class OrderDTO {
     private String receiverAddress;
     private List<OrderItemDTO> orderItems;
     private BigDecimal totalAmount;
+    private List<Long> cartItemIds; // 选中的购物车商品ID列表（用于结算后删除）
 }
