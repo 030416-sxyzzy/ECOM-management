@@ -4,8 +4,8 @@
     <div class="toolbar">
       <el-input
         v-model="filters.orderId"
-        placeholder="订单号"
-        style="width: 200px"
+        placeholder="输入订单ID或订单号"
+        style="width: 220px"
         clearable
         @clear="loadData"
       />

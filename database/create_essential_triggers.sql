@@ -79,7 +79,6 @@ DELIMITER ;
 
 -- 删除已存在的视图
 DROP VIEW IF EXISTS v_product_sales_stats;
-DROP VIEW IF EXISTS v_user_order_summary;
 DROP VIEW IF EXISTS v_daily_sales;
 
 -- 商品销售统计视图
@@ -102,21 +101,6 @@ LEFT JOIN order_items oi ON p.id = oi.product_id
 LEFT JOIN orders o ON oi.order_id = o.id AND o.status != 'cancelled'
 GROUP BY p.id, p.name, p.price, p.stock;
 
--- 用户订单汇总视图
-CREATE VIEW v_user_order_summary AS
-SELECT 
-    u.id as user_id,
-    u.username,
-    u.email,
-    COUNT(DISTINCT o.id) as total_orders,
-    COALESCE(SUM(CASE WHEN o.status != 'cancelled' THEN o.total_amount ELSE 0 END), 0) as total_spent,
-    COALESCE(AVG(CASE WHEN o.status != 'cancelled' THEN o.total_amount ELSE NULL END), 0) as avg_order_amount,
-    MAX(o.created_at) as last_order_date,
-    COUNT(DISTINCT CASE WHEN o.status = 'completed' THEN o.id END) as completed_orders,
-    COUNT(DISTINCT CASE WHEN o.status = 'cancelled' THEN o.id END) as cancelled_orders
-FROM users u
-LEFT JOIN orders o ON u.id = o.user_id
-GROUP BY u.id, u.username, u.email;
 
 -- 每日销售统计视图
 CREATE VIEW v_daily_sales AS
@@ -138,11 +122,10 @@ ORDER BY sale_date DESC;
 -- ===========================================
 
 SELECT '✅ 数据库功能创建完成！' AS message;
-SELECT '  - 库存变更日志表' AS created_tables UNION ALL
-SELECT '  - 备份记录表' UNION ALL
-SELECT '  - 订单库存扣减触发器' UNION ALL
-SELECT '  - 订单取消恢复触发器' UNION ALL
-SELECT '  - 商品销售统计视图' UNION ALL
-SELECT '  - 用户订单汇总视图' UNION ALL
-SELECT '  - 每日销售统计视图';
-
+SELECT '已创建的功能：' AS info UNION ALL
+SELECT '  - 库存变更日志表 (inventory_logs)' UNION ALL
+SELECT '  - 备份记录表 (backup_records)' UNION ALL
+SELECT '  - 订单库存扣减触发器 (tr_order_items_after_insert)' UNION ALL
+SELECT '  - 订单取消恢复触发器 (tr_orders_after_update)' UNION ALL
+SELECT '  - 商品销售统计视图 (v_product_sales_stats)' UNION ALL
+SELECT '  - 每日销售统计视图 (v_daily_sales)';

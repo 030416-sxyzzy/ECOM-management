@@ -58,6 +58,9 @@ CREATE TABLE orders (
     total_amount DECIMAL(10,2) NOT NULL COMMENT '订单总金额',
     status ENUM('pending', 'paid', 'shipped', 'completed', 'cancelled') DEFAULT 'pending' COMMENT '订单状态',
     shipping_address TEXT NOT NULL COMMENT '收货地址',
+    receiver_name VARCHAR(100) COMMENT '收货人姓名',
+    receiver_phone VARCHAR(20) COMMENT '收货人电话',
+    receiver_address TEXT COMMENT '收货人地址',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     INDEX idx_user_id (user_id),
@@ -173,20 +176,6 @@ BEGIN
 END$$
 DELIMITER ;
 
--- 3. 用户操作日志触发器
-DELIMITER $$
-CREATE TRIGGER tr_users_after_update
-AFTER UPDATE ON users
-FOR EACH ROW
-BEGIN
-    -- 记录用户信息变更
-    IF OLD.email != NEW.email OR OLD.username != NEW.username OR OLD.phone != NEW.phone THEN
-        INSERT INTO user_operation_logs (user_id, operation_type, operation_desc, created_at)
-        VALUES (NEW.id, 'update_profile', '用户更新个人信息', CURRENT_TIMESTAMP);
-    END IF;
-END$$
-DELIMITER ;
-
 -- ===========================================
 -- 数据库视图 (Views)
 -- ===========================================
@@ -211,24 +200,7 @@ LEFT JOIN order_items oi ON p.id = oi.product_id
 LEFT JOIN orders o ON oi.order_id = o.id AND o.status != 'cancelled'
 GROUP BY p.id, p.name, p.price, p.stock;
 
--- 2. 用户订单汇总视图
-CREATE VIEW v_user_order_summary AS
-SELECT 
-    u.id as user_id,
-    u.username,
-    u.email,
-    COUNT(DISTINCT o.id) as total_orders,
-    COALESCE(SUM(CASE WHEN o.status != 'cancelled' THEN o.total_amount ELSE 0 END), 0) as total_spent,
-    COALESCE(AVG(CASE WHEN o.status != 'cancelled' THEN o.total_amount ELSE NULL END), 0) as avg_order_amount,
-    MAX(o.created_at) as last_order_date,
-    COUNT(DISTINCT CASE WHEN o.status = 'completed' THEN o.id END) as completed_orders,
-    COUNT(DISTINCT CASE WHEN o.status = 'cancelled' THEN o.id END) as cancelled_orders
-FROM users u
-LEFT JOIN orders o ON u.id = o.user_id
-GROUP BY u.id, u.username, u.email;
-
-
--- 4. 每日销售统计视图
+-- 2. 每日销售统计视图
 CREATE VIEW v_daily_sales AS
 SELECT 
     DATE(o.created_at) as sale_date,
@@ -244,26 +216,26 @@ GROUP BY DATE(o.created_at)
 ORDER BY sale_date DESC;
 
 -- ===========================================
--- 数据库备份相关表
+-- 辅助表 (Auxiliary Tables)
 -- ===========================================
 
 -- 备份记录表
-CREATE TABLE backup_records (
+CREATE TABLE IF NOT EXISTS backup_records (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    backup_name VARCHAR(255) NOT NULL COMMENT '备份名称',
-    backup_type ENUM('manual', 'scheduled') NOT NULL COMMENT '备份类型：手动/定时',
-    backup_path VARCHAR(500) NOT NULL COMMENT '备份文件路径',
-    file_size BIGINT NOT NULL COMMENT '备份文件大小（字节）',
-    status ENUM('success', 'failed', 'in_progress') DEFAULT 'in_progress' COMMENT '备份状态',
-    error_message TEXT COMMENT '错误信息',
+    backup_file_name VARCHAR(255) NOT NULL COMMENT '备份文件名',
+    backup_file_path VARCHAR(500) NOT NULL COMMENT '备份文件路径',
+    backup_file_size BIGINT DEFAULT 0 COMMENT '备份文件大小（字节）',
+    backup_type VARCHAR(20) DEFAULT 'manual' COMMENT '备份类型：manual-手动, auto-自动',
+    status VARCHAR(20) DEFAULT 'success' COMMENT '备份状态：success-成功, failed-失败, in_progress-进行中',
+    description VARCHAR(500) COMMENT '备份说明',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    INDEX idx_backup_type (backup_type),
+    INDEX idx_created_at (created_at),
     INDEX idx_status (status),
-    INDEX idx_created_at (created_at)
+    INDEX idx_backup_type (backup_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='数据库备份记录表';
 
 -- 库存变更日志表
-CREATE TABLE inventory_logs (
+CREATE TABLE IF NOT EXISTS inventory_logs (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     product_id BIGINT NOT NULL COMMENT '商品ID',
     change_type ENUM('in', 'out') NOT NULL COMMENT '变更类型：入库/出库',
@@ -271,79 +243,6 @@ CREATE TABLE inventory_logs (
     reason VARCHAR(500) NOT NULL COMMENT '变更原因',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     INDEX idx_product_id (product_id),
-    INDEX idx_change_type (change_type),
     INDEX idx_created_at (created_at),
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='库存变更日志表';
-
--- 用户操作日志表
-CREATE TABLE user_operation_logs (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    user_id BIGINT NOT NULL COMMENT '用户ID',
-    operation_type VARCHAR(50) NOT NULL COMMENT '操作类型',
-    operation_desc VARCHAR(500) NOT NULL COMMENT '操作描述',
-    ip_address VARCHAR(45) COMMENT 'IP地址',
-    user_agent TEXT COMMENT '用户代理',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    INDEX idx_user_id (user_id),
-    INDEX idx_operation_type (operation_type),
-    INDEX idx_created_at (created_at),
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户操作日志表';
-
--- ===========================================
--- 存储过程：数据库备份
--- ===========================================
-
-DELIMITER $$
-CREATE PROCEDURE sp_create_backup(IN backup_name VARCHAR(255), IN backup_type VARCHAR(20))
-BEGIN
-    DECLARE backup_path VARCHAR(500);
-    DECLARE file_size BIGINT DEFAULT 0;
-    DECLARE backup_id BIGINT;
-    
-    -- 生成备份文件路径
-    SET backup_path = CONCAT('/backups/', backup_name, '_', DATE_FORMAT(NOW(), '%Y%m%d_%H%i%s'), '.sql');
-    
-    -- 插入备份记录
-    INSERT INTO backup_records (backup_name, backup_type, backup_path, status)
-    VALUES (backup_name, backup_type, backup_path, 'in_progress');
-    
-    SET backup_id = LAST_INSERT_ID();
-    
-    -- 这里应该调用系统命令执行mysqldump
-    -- 由于存储过程限制，实际备份需要通过应用程序实现
-    
-    -- 更新备份状态为成功（实际应用中需要根据备份结果更新）
-    UPDATE backup_records 
-    SET status = 'success', file_size = 0
-    WHERE id = backup_id;
-    
-    SELECT backup_id as backup_record_id, backup_path;
-END$$
-DELIMITER ;
-
-
--- ===========================================
--- 存储过程：销售统计报表
--- ===========================================
-
-DELIMITER $$
-CREATE PROCEDURE sp_sales_report(IN start_date DATE, IN end_date DATE)
-BEGIN
-    SELECT 
-        DATE(o.created_at) as report_date,
-        COUNT(DISTINCT o.id) as order_count,
-        COUNT(DISTINCT o.user_id) as customer_count,
-        SUM(o.total_amount) as total_sales,
-        AVG(o.total_amount) as avg_order_value,
-        COUNT(DISTINCT oi.product_id) as product_variety,
-        SUM(oi.quantity) as total_items_sold
-    FROM orders o
-    LEFT JOIN order_items oi ON o.id = oi.order_id
-    WHERE o.status != 'cancelled' 
-        AND DATE(o.created_at) BETWEEN start_date AND end_date
-    GROUP BY DATE(o.created_at)
-    ORDER BY report_date DESC;
-END$$
-DELIMITER ;

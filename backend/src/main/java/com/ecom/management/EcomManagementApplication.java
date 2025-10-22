@@ -1,11 +1,15 @@
 package com.ecom.management;
 
+import com.ecom.management.entity.BackupRecord;
 import com.ecom.management.entity.CartItem;
 import com.ecom.management.entity.Category;
 import com.ecom.management.entity.Product;
+import com.ecom.management.entity.ProductSalesStats;
 import com.ecom.management.mapper.CartItemMapper;
 import com.ecom.management.mapper.CategoryMapper;
 import com.ecom.management.mapper.ProductMapper;
+import com.ecom.management.mapper.ProductSalesStatsMapper;
+import com.ecom.management.service.BackupService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -28,6 +32,12 @@ public class EcomManagementApplication {
     
     @Autowired
     private CartItemMapper cartItemMapper;
+    
+    @Autowired
+    private ProductSalesStatsMapper productSalesStatsMapper;
+    
+    @Autowired
+    private BackupService backupService;
 
     public static void main(String[] args) {
         SpringApplication.run(EcomManagementApplication.class, args);
@@ -380,6 +390,134 @@ public class EcomManagementApplication {
         } catch (Exception e) {
             response.put("success", false);
             response.put("message", "获取购物车统计失败: " + e.getMessage());
+        }
+        return response;
+    }
+
+    // ==================== 统计分析 ====================
+    
+    /**
+     * 获取商品销量统计
+     */
+    @GetMapping("/stats/product-sales")
+    public Map<String, Object> getProductSalesStats(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            // 分页查询
+            int offset = (page - 1) * size;
+            List<ProductSalesStats> statsList = productSalesStatsMapper.findSalesStatsByPage(offset, size);
+            int total = productSalesStatsMapper.countSalesStats();
+            
+            Map<String, Object> data = new HashMap<>();
+            data.put("records", statsList);
+            data.put("total", total);
+            data.put("page", page);
+            data.put("size", size);
+            data.put("totalPages", (int) Math.ceil((double) total / size));
+            
+            response.put("success", true);
+            response.put("message", "获取商品销量统计成功");
+            response.put("data", data);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "获取商品销量统计失败: " + e.getMessage());
+            response.put("data", null);
+        }
+        return response;
+    }
+    
+    /**
+     * 获取所有商品销量统计（不分页）
+     */
+    @GetMapping("/stats/product-sales/all")
+    public Map<String, Object> getAllProductSalesStats() {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            List<ProductSalesStats> statsList = productSalesStatsMapper.findAllSalesStats();
+            response.put("success", true);
+            response.put("message", "获取商品销量统计成功");
+            response.put("data", statsList);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "获取商品销量统计失败: " + e.getMessage());
+            response.put("data", new ArrayList<>());
+        }
+        return response;
+    }
+
+    // ==================== 数据库备份 ====================
+    
+    /**
+     * 执行数据库备份
+     */
+    @PostMapping("/backup/perform")
+    public Map<String, Object> performBackup(@RequestBody(required = false) Map<String, String> request) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            String description = request != null ? request.get("description") : "手动备份";
+            Long backupId = backupService.performBackup(description);
+            
+            response.put("success", true);
+            response.put("message", "数据库备份成功");
+            response.put("data", Map.of("backupId", backupId));
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "数据库备份失败: " + e.getMessage());
+            response.put("data", null);
+        }
+        return response;
+    }
+    
+    /**
+     * 获取所有备份记录
+     */
+    @GetMapping("/backup/records")
+    public Map<String, Object> getBackupRecords(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            List<BackupRecord> records = backupService.getBackupRecordsByPage(page, size);
+            int total = backupService.countBackupRecords();
+            
+            Map<String, Object> data = new HashMap<>();
+            data.put("records", records);
+            data.put("total", total);
+            data.put("page", page);
+            data.put("size", size);
+            data.put("totalPages", (int) Math.ceil((double) total / size));
+            
+            response.put("success", true);
+            response.put("message", "获取备份记录成功");
+            response.put("data", data);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "获取备份记录失败: " + e.getMessage());
+            response.put("data", null);
+        }
+        return response;
+    }
+    
+    /**
+     * 删除备份记录
+     */
+    @DeleteMapping("/backup/records/{id}")
+    public Map<String, Object> deleteBackupRecord(@PathVariable Long id) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            boolean success = backupService.deleteBackupRecord(id);
+            if (success) {
+                response.put("success", true);
+                response.put("message", "删除备份记录成功");
+            } else {
+                response.put("success", false);
+                response.put("message", "备份记录不存在");
+            }
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "删除备份记录失败: " + e.getMessage());
         }
         return response;
     }

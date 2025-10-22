@@ -33,10 +33,39 @@ public class OrderController {
 
     /**
      * 获取所有订单列表（管理员）
+     * @param orderId 订单号或订单ID
+     * @param status 订单状态
      */
     @GetMapping
-    public Result<List<OrderVO>> getAllOrders() {
+    public Result<List<OrderVO>> getAllOrders(
+            @RequestParam(required = false) String orderId,
+            @RequestParam(required = false) String status) {
         List<OrderVO> orders = orderService.getAllOrders();
+        
+        // 智能搜索：如果是纯数字，按订单ID精确匹配；否则按订单号前缀匹配
+        if (orderId != null && !orderId.isEmpty()) {
+            // 判断是否为纯数字
+            if (orderId.matches("\\d+")) {
+                // 纯数字：按订单ID精确匹配
+                final Long orderIdLong = Long.parseLong(orderId);
+                orders = orders.stream()
+                        .filter(order -> order.getId().equals(orderIdLong))
+                        .collect(java.util.stream.Collectors.toList());
+            } else {
+                // 非纯数字：按订单号前缀匹配
+                orders = orders.stream()
+                        .filter(order -> order.getOrderNumber().startsWith(orderId.toUpperCase()))
+                        .collect(java.util.stream.Collectors.toList());
+            }
+        }
+        
+        // 状态筛选
+        if (status != null && !status.isEmpty()) {
+            orders = orders.stream()
+                    .filter(order -> status.equals(order.getStatus()))
+                    .collect(java.util.stream.Collectors.toList());
+        }
+        
         return Result.success(orders);
     }
 

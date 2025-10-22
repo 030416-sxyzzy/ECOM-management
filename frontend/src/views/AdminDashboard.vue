@@ -20,6 +20,16 @@
       <el-tab-pane label="订单管理" name="orders">
         <OrderManagement />
       </el-tab-pane>
+      
+      <!-- 销量统计 -->
+      <el-tab-pane label="📊 销量统计" name="stats">
+        <SalesStats />
+      </el-tab-pane>
+      
+      <!-- 数据库备份 -->
+      <el-tab-pane label="💾 数据库备份" name="backup">
+        <DatabaseBackup />
+      </el-tab-pane>
     </el-tabs>
   </div>
 </template>
@@ -29,6 +39,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import ProductManagement from '../components/ProductManagement.vue'
 import OrderManagement from '../components/OrderManagement.vue'
+import SalesStats from '../components/SalesStats.vue'
+import DatabaseBackup from '../components/DatabaseBackup.vue'
 
 const router = useRouter()
 const activeTab = ref('products')
